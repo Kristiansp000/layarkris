@@ -60,21 +60,23 @@
                     <p class="text-xs md:text-sm text-zinc-500 dark:text-zinc-400">Belum ada tayangan aktif</p>
                 </div>
 
-                <!-- Fullscreen Button -->
-                <button id="btn-fullscreen" class="absolute top-3 right-3 md:top-4 md:right-4 p-2 bg-black/60 hover:bg-black/80 text-white rounded-lg transition opacity-100 lg:opacity-0 lg:group-hover:opacity-100 focus:opacity-100 hidden">
-                    <i data-lucide="expand" class="w-4 h-4"></i>
-                </button>
+                <!-- Floating Action Bar (Top Right) -->
+                <div class="absolute top-3 right-3 md:top-4 md:right-4 flex items-center gap-2 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 focus-within:opacity-100 transition duration-150">
+                    <!-- Pop-up Icon Button -->
+                    <button id="btn-mobile-popup" class="p-2 bg-black/60 hover:bg-black/80 text-white rounded-lg transition hidden" title="Buka Jendela Pop-up">
+                        <i data-lucide="external-link" class="w-4 h-4"></i>
+                    </button>
+                    <!-- Fullscreen Button -->
+                    <button id="btn-fullscreen" class="p-2 bg-black/60 hover:bg-black/80 text-white rounded-lg transition hidden" title="Layar Penuh">
+                        <i data-lucide="expand" class="w-4 h-4"></i>
+                    </button>
+                </div>
 
                 <!-- Status Logs -->
                 <div id="status-log" class="absolute bottom-3 left-3 md:bottom-4 md:left-4 bg-zinc-100/90 dark:bg-zinc-800/90 border border-zinc-200 dark:border-zinc-700 text-[9px] md:text-[10px] font-mono px-2 py-0.5 md:py-1 rounded text-zinc-500 max-w-[80%] truncate">
                     System: Ready
                 </div>
             </div>
-
-            <!-- Native Picture-in-Picture Button for Mobile & Desktop -->
-            <button id="btn-mobile-popup" class="w-full py-2.5 px-4 bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900 font-medium rounded-lg text-xs md:text-sm transition flex items-center justify-center gap-2 hidden">
-                <i data-lucide="external-link" class="w-4 h-4"></i> Aktifkan Mode Pop-up (Floating Window)
-            </button>
         </div>
 
         <!-- Control Center Panel -->
@@ -84,12 +86,17 @@
             <div class="flex-1 p-5 md:p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl flex flex-col justify-between gap-4 shadow-sm">
                 <div>
                     <h2 class="text-[10px] md:text-xs font-semibold tracking-wide text-zinc-400 dark:text-zinc-500 uppercase mb-3">Kontrol Penyiaran</h2>
-                    <button id="btn-start-share" class="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg text-xs md:text-sm transition flex items-center justify-center gap-2">
-                        <i data-lucide="screen-share" class="w-4 h-4"></i> Bagikan Layar
-                    </button>
-                    <button id="btn-stop-share" class="w-full py-2.5 px-4 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg text-xs md:text-sm transition hidden flex items-center justify-center gap-2">
-                        <i data-lucide="stop-circle" class="w-4 h-4"></i> Hentikan Berbagi
-                    </button>
+                    
+                    <div class="flex flex-col gap-2">
+                        <!-- Button Start/Change Source -->
+                        <button id="btn-start-share" class="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg text-xs md:text-sm transition flex items-center justify-center gap-2">
+                            <i id="icon-share" data-lucide="screen-share" class="w-4 h-4"></i> <span id="txt-share">Bagikan Layar</span>
+                        </button>
+                        <!-- Button Stop Share -->
+                        <button id="btn-stop-share" class="w-full py-2.5 px-4 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg text-xs md:text-sm transition hidden flex items-center justify-center gap-2">
+                            <i data-lucide="stop-circle" class="w-4 h-4"></i> Hentikan Berbagi
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Audio Switcher -->
@@ -105,10 +112,10 @@
 
             <!-- Panel 2: Watch Control -->
             <div class="flex-1 p-5 md:p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl flex flex-col justify-center gap-3 shadow-sm">
-                <h2 class="text-[10px] md:text-xs font-semibold tracking-wide text-zinc-400 dark:text-zinc-500 uppercase">Hubunakan</h2>
+                <h2 class="text-[10px] md:text-xs font-semibold tracking-wide text-zinc-400 dark:text-zinc-500 uppercase">Hubungkan</h2>
                 <div class="flex gap-2">
                     <input type="text" id="input-target-id" maxlength="3" placeholder="ID 3 digit..." class="w-full min-w-0 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-xs md:text-sm font-mono focus:outline-none focus:border-blue-500 placeholder-zinc-400 text-zinc-800 dark:text-zinc-200">
-                    <button id="btn-connect" class="px-3 md:px-4 py-2 bg-zinc-900 dark:dark:bg-zinc-100 text-white dark:text-zinc-900 font-medium rounded-lg text-xs md:text-sm hover:bg-zinc-800 dark:hover:bg-zinc-200 transition flex items-center gap-1.5 shrink-0">
+                    <button id="btn-connect" class="px-3 md:px-4 py-2 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-medium rounded-lg text-xs md:text-sm hover:bg-zinc-800 dark:hover:bg-zinc-200 transition flex items-center gap-1.5 shrink-0">
                         <i data-lucide="play" class="w-3.5 h-3.5"></i> Hubungkan
                     </button>
                 </div>
@@ -162,6 +169,7 @@
         const peer = new Peer(fullCustomId, peerConfig);
         let screenStream = null;
         let isAudioEnabled = false;
+        let activeCalls = []; // Menyimpan daftar penonton yang aktif
 
         const elPeerId = document.getElementById('peer-id-display');
         const elMainVideo = document.getElementById('main-video');
@@ -177,7 +185,6 @@
         const btnConnect = document.getElementById('btn-connect');
         const inputTargetId = document.getElementById('input-target-id');
 
-        // Tampilkan tombol PIP jika didukung oleh browser/perangkat mobile
         if (document.pictureInPictureEnabled || elMainVideo.webkitSupportsFullscreen) {
             btnMobilePopup.classList.remove('hidden');
         }
@@ -186,7 +193,6 @@
             elLog.innerText = `System: ${msg}`;
         }
 
-        // TWEAK AUDIO KUALITAS TINGGI (Memaksa Bitrate Opus ke 320kbps Stereo)
         function forceHighQualityAudio(sdp) {
             return sdp.replace('useinbandfec=1', 'useinbandfec=1;stereo=1;maxaveragebitrate=320000');
         }
@@ -196,32 +202,36 @@
             logStatus("Server siap di cloud.");
         });
 
-        // SISI HOST
+        // SISI HOST (Menerima koneksi baru)
         peer.on('connection', (conn) => {
             conn.on('data', (data) => {
                 if (data.type === 'REQUEST_STREAM' && screenStream) {
                     logStatus(`Penonton terhubung...`);
-                    let outboundStream = new MediaStream();
-                    screenStream.getVideoTracks().forEach(t => outboundStream.addTrack(t));
-                    screenStream.getAudioTracks().forEach(t => outboundStream.addTrack(t));
-                    
-                    const call = peer.call(data.viewerId, outboundStream);
-                    
-                    // Modifikasi SDP sebelum dikirim ke penonton agar kualitas audio maksimal
-                    if (call.peerConnection) {
-                        call.peerConnection.addEventListener('negotiationneeded', async () => {
-                            const offer = await call.peerConnection.createOffer();
-                            let highQualitySdp = forceHighQualityAudio(offer.sdp);
-                            await call.peerConnection.setLocalDescription({ type: 'offer', sdp: highQualitySdp });
-                        });
-                    }
+                    sendStreamToViewer(data.viewerId);
                 }
             });
         });
 
-        // SISI PENONTON (VIEWER)
+        function sendStreamToViewer(viewerId) {
+            let outboundStream = new MediaStream();
+            screenStream.getVideoTracks().forEach(t => outboundStream.addTrack(t));
+            screenStream.getAudioTracks().forEach(t => outboundStream.addTrack(t));
+            
+            const call = peer.call(viewerId, outboundStream);
+            activeCalls.push({ viewerId, call });
+
+            if (call.peerConnection) {
+                call.peerConnection.addEventListener('negotiationneeded', async () => {
+                    const offer = await call.peerConnection.createOffer();
+                    let highQualitySdp = forceHighQualityAudio(offer.sdp);
+                    await call.peerConnection.setLocalDescription({ type: 'offer', sdp: highQualitySdp });
+                });
+            }
+        }
+
+        // SISI PENONTON (Menerima stream video)
         peer.on('call', (call) => {
-            logStatus("Menerima enkripsi video...");
+            logStatus("Menerima feed penyiaran...");
             call.answer(); 
             
             call.on('stream', (remoteStream) => {
@@ -237,31 +247,86 @@
             });
         });
 
-        // --- HANDLER SHARE SCREEN (HIGH FIDELITY AUDIO AUDIO SETTING) ---
+        // --- HANDLER PENYIARAN (DENGAN FITUR GANTI SOURCE / LIVE HOT-SWAP) ---
         btnStartShare.addEventListener('click', async () => {
             try {
-                screenStream = await navigator.mediaDevices.getDisplayMedia({
+                // Meminta media stream baru dari browser
+                const newStream = await navigator.mediaDevices.getDisplayMedia({
                     video: { frameRate: { ideal: 30, max: 60 } },
                     audio: {
-                        echoCancellation: false,   // Mematikan filter pembatal gema agar musik tidak terpotong
-                        noiseSuppression: false,   // Mematikan peredam bising agar audio berfrekuensi tinggi tetap jernih
-                        autoGainControl: false,    // Mematikan normalisasi otomatis agar dinamika suara terjaga
-                        channelCount: 2            // Memaksa mode stereo
+                        echoCancellation: false,   
+                        noiseSuppression: false,   
+                        autoGainControl: false,    
+                        channelCount: 2            
                     }
                 });
 
-                screenStream.getAudioTracks().forEach(t => t.enabled = isAudioEnabled);
-                elMainVideo.srcObject = screenStream;
-                elMainVideo.classList.remove('hidden');
-                btnFullscreen.classList.remove('hidden');
-                elPlaceholder.classList.add('hidden');
-                btnStartShare.classList.add('hidden');
-                btnStopShare.classList.remove('hidden');
-                
+                // Jika screenStream sudah ada sebelumnya (Berarti user sedang menekan tombol 'Ganti Layar/Tab')
+                if (screenStream) {
+                    logStatus("Mengganti sumber layar...");
+                    
+                    const newVideoTrack = newStream.getVideoTracks()[0];
+                    const newAudioTrack = newStream.getAudioTracks()[0];
+
+                    // Tetapkan status trek audio baru sesuai setelan UI saat ini
+                    if (newAudioTrack) newAudioTrack.enabled = isAudioEnabled;
+
+                    // Mengganti trek video & audio di sisi pemutar lokal Host
+                    const localVideoTrack = screenStream.getVideoTracks()[0];
+                    if (localVideoTrack) localVideoTrack.stop();
+                    
+                    const localAudioTrack = screenStream.getAudioTracks()[0];
+                    if (localAudioTrack) localAudioTrack.stop();
+
+                    screenStream = newStream;
+                    elMainVideo.srcObject = screenStream;
+
+                    // RTCRtpSender: Mengganti trek di sisi penonton secara langsung tanpa mutus panggilan WebRTC
+                    activeCalls.forEach(item => {
+                        if (item.call && item.call.peerConnection) {
+                            const senders = item.call.peerConnection.getSenders();
+                            
+                            // Ganti Video Track
+                            const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+                            if (videoSender && newVideoTrack) videoSender.replaceTrack(newVideoTrack);
+
+                            // Ganti Audio Track
+                            const audioSender = senders.find(s => s.track && s.track.kind === 'audio');
+                            if (audioSender && newAudioTrack) {
+                                audioSender.replaceTrack(newAudioTrack);
+                            } else if (!audioSender && newAudioTrack) {
+                                // Jika sebelumnya tidak ada suara tapi sekarang tab baru punya suara, kirim ulang stream
+                                item.call.close();
+                                sendStreamToViewer(item.viewerId);
+                            }
+                        }
+                    });
+
+                    logStatus("Sumber layar berhasil diperbarui.");
+                } else {
+                    // Penayangan awal pertama kali
+                    screenStream = newStream;
+                    screenStream.getAudioTracks().forEach(t => t.enabled = isAudioEnabled);
+                    elMainVideo.srcObject = screenStream;
+                    
+                    elMainVideo.classList.remove('hidden');
+                    btnFullscreen.classList.remove('hidden');
+                    elPlaceholder.classList.add('hidden');
+                    
+                    // Modifikasi tampilan tombol utama menjadi mode "Ganti Source"
+                    btnStartShare.className = "w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg text-xs md:text-sm transition flex items-center justify-center gap-2";
+                    document.getElementById('icon-share').setAttribute('data-lucide', 'refresh-cw');
+                    document.getElementById('txt-share').innerText = "Ganti Layar/Tab";
+                    
+                    btnStopShare.classList.remove('hidden');
+                    logStatus("Berbagi layar aktif. Menunggu penonton.");
+                }
+
+                lucide.createIcons();
                 screenStream.getVideoTracks()[0].onended = () => stopScreenShare();
-                logStatus("Berbagi layar kualitas tinggi aktif.");
+
             } catch (err) {
-                logStatus("Izin berbagi layar ditolak.");
+                logStatus("Pemilihan sumber dibatalkan atau ditolak.");
             }
         });
 
@@ -270,11 +335,23 @@
                 screenStream.getTracks().forEach(t => t.stop());
                 screenStream = null;
             }
+            
+            // Putus semua panggilan aktif ke penonton saat dihentikan
+            activeCalls.forEach(item => item.call.close());
+            activeCalls = [];
+
             elMainVideo.classList.add('hidden');
             btnFullscreen.classList.add('hidden');
             if(elPlaceholder) elPlaceholder.classList.remove('hidden');
-            btnStartShare.classList.remove('hidden');
+            
+            // Kembalikan UI tombol ke kondisi awal
+            btnStartShare.className = "w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg text-xs md:text-sm transition flex items-center justify-center gap-2";
+            document.getElementById('icon-share').setAttribute('data-lucide', 'screen-share');
+            document.getElementById('txt-share').innerText = "Bagikan Layar";
+            
             btnStopShare.classList.add('hidden');
+            lucide.createIcons();
+            logStatus("Berbagi layar dihentikan.");
         }
         btnStopShare.addEventListener('click', stopScreenShare);
 
@@ -298,20 +375,18 @@
             lucide.createIcons();
         });
 
-        // --- FIX FULLSCREEN MOBILE (NATIVE CORRECTION) ---
+        // --- FIX FULLSCREEN MOBILE ---
         btnFullscreen.addEventListener('click', () => {
-            // Pada Mobile/iOS, langsung paksa elemen video masuk ke mode fullscreen bawaan OS
             if (elMainVideo.webkitEnterFullscreen) {
                 elMainVideo.webkitEnterFullscreen();
             } else if (elMainVideo.requestFullscreen) {
                 elMainVideo.requestFullscreen();
             } else {
-                // Alternatif fallback jika wrapper diizinkan oleh sistem android lama
                 if (elWrapper.requestFullscreen) elWrapper.requestFullscreen();
             }
         });
 
-        // --- FIX POP-UP FLOATING WINDOW (NATIVE PIP SYSTEM) ---
+        // --- FIX POP-UP FLOATING WINDOW (PICTURE IN PICTURE) ---
         btnMobilePopup.addEventListener('click', async () => {
             if (!elMainVideo.srcObject) {
                 alert("Belum ada tayangan aktif!");
@@ -319,10 +394,8 @@
             }
             try {
                 if (document.pictureInPictureEnabled && !document.pictureInPictureElement) {
-                    // Browser Android / Desktop Chrome murni
                     await elMainVideo.requestPictureInPicture();
                 } else if (elMainVideo.webkitSupportsFullscreen) {
-                    // iOS Safari fallback murni
                     elMainVideo.webkitEnterFullscreen();
                 }
             } catch (error) {
