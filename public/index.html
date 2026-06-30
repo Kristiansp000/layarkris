@@ -49,7 +49,6 @@
         
         <!-- Video Presentation Area -->
         <div id="video-wrapper" class="w-full lg:w-2/3 aspect-video bg-white dark:bg-zinc-900 rounded-xl overflow-hidden relative border border-zinc-200 dark:border-zinc-800 shadow-sm flex items-center justify-center group order-1">
-            <!-- FIX: Ditambahkan 'muted' dan 'controls' opsional secara programatis untuk memecah Autoplay Block di Vercel -->
             <video id="main-video" autoplay playsinline muted class="w-full h-full object-contain hidden"></video>
             
             <!-- Placeholder -->
@@ -91,15 +90,16 @@
                     <span class="text-xs text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5 min-w-0 truncate">
                         <i data-lucide="volume-2" class="w-3.5 h-3.5 shrink-0"></i> Suara Share Screen
                     </span>
-                    <button id="btn-toggle-audio" class="py-1.5 px-3 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs font-medium hover:bg-zinc-50 dark:hover:bg-zinc-800 transition flex items-center gap-1.5 bg-blue-50 dark:bg-blue-900/20 border-blue-500/50 text-blue-600 dark:text-blue-400 shrink-0">
-                        <i id="icon-audio" class="w-3.5 h-3.5" data-lucide="volume-2"></i> <span id="txt-audio">On</span>
+                    <!-- Dipasang default Off pada UI di awal untuk memaksa interaksi fisik klik oleh user/penonton -->
+                    <button id="btn-toggle-audio" class="py-1.5 px-3 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs font-medium hover:bg-zinc-50 dark:hover:bg-zinc-800 transition flex items-center gap-1.5 text-zinc-500 dark:text-zinc-400 shrink-0">
+                        <i id="icon-audio" class="w-3.5 h-3.5" data-lucide="volume-x"></i> <span id="txt-audio">Off</span>
                     </button>
                 </div>
             </div>
 
             <!-- Panel 2: Watch Control -->
             <div class="flex-1 p-5 md:p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl flex flex-col justify-center gap-3 shadow-sm">
-                <h2 class="text-[10px] md:text-xs font-semibold tracking-wide text-zinc-400 dark:text-zinc-500 uppercase">Hubunakan</h2>
+                <h2 class="text-[10px] md:text-xs font-semibold tracking-wide text-zinc-400 dark:text-zinc-500 uppercase">Hubungkan</h2>
                 <div class="flex gap-2">
                     <input type="text" id="input-target-id" maxlength="3" placeholder="ID 3 digit..." class="w-full min-w-0 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-xs md:text-sm font-mono focus:outline-none focus:border-blue-500 placeholder-zinc-400 text-zinc-800 dark:text-zinc-200">
                     <button id="btn-connect" class="px-3 md:px-4 py-2 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-medium rounded-lg text-xs md:text-sm hover:bg-zinc-800 dark:hover:bg-zinc-200 transition flex items-center gap-1.5 shrink-0">
@@ -131,7 +131,6 @@
         const shortRoomId = generateShortId();
         const fullCustomId = APP_PREFIX + shortRoomId; 
 
-        // FIX VERCEL: Deteksi otomatis environment untuk mencegah bentrokan port SSL/Websocket
         const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
         
         const peerConfig = {
@@ -148,7 +147,6 @@
             }
         };
 
-        // Jika tidak di localhost (berarti di Vercel HTTPS), gunakan konfigurasi cloud default Cloud PeerJS tanpa mengunci port 443 secara kaku
         if (!isLocalhost) {
             peerConfig.host = '0.peerjs.com';
             peerConfig.secure = true;
@@ -161,7 +159,7 @@
         const peer = new Peer(fullCustomId, peerConfig);
 
         let screenStream = null;
-        let isAudioEnabled = true;
+        let isAudioEnabled = false; // Set awal false agar sinkron dengan UI awal penonton
 
         const elPeerId = document.getElementById('peer-id-display');
         const elMainVideo = document.getElementById('main-video');
@@ -198,14 +196,15 @@
         peer.on('connection', (conn) => {
             conn.on('data', (data) => {
                 if (data.type === 'REQUEST_STREAM') {
-                    logStatus(`Penonton terhubung, menyalurkan video...`);
+                    logStatus(`Penonton terhubung, menyalurkan video & audio...`);
                     
                     if (screenStream) {
                         let outboundStream = new MediaStream();
                         screenStream.getVideoTracks().forEach(t => outboundStream.addTrack(t));
-                        if (isAudioEnabled) {
-                            screenStream.getAudioTracks().forEach(t => outboundStream.addTrack(t));
-                        }
+                        
+                        // Kirim semua trek audio sistem yang tersedia ke penonton
+                        screenStream.getAudioTracks().forEach(t => outboundStream.addTrack(t));
+                        
                         peer.call(data.viewerId, outboundStream);
                     } else {
                         logStatus("Gagal kirim: Anda belum menekan tombol Bagikan Layar.");
@@ -216,27 +215,28 @@
 
         // SISI PENONTON (VIEWER)
         peer.on('call', (call) => {
-            logStatus("Menerima enkripsi video asli...");
+            logStatus("Menerima feed media asli...");
             call.answer(); 
             
             call.on('stream', (remoteStream) => {
-                // FIX VERCEL: Memaksa manipulasi DOM agar video mau bypass Autoplay Restriction milik browser HTTPS
                 elMainVideo.srcObject = remoteStream;
-                elMainVideo.muted = true; // Harus true di awal agar browser mengizinkan autoplay otomatis
+                
+                // Cek apakah ada trek audio yang dikirim oleh Host
+                if(remoteStream.getAudioTracks().length > 0) {
+                    logStatus("Media terdeteksi mengandung audio sistem!");
+                }
                 
                 elMainVideo.classList.remove('hidden');
                 btnFullscreen.classList.remove('hidden');
                 elPlaceholder.classList.add('hidden');
                 btnConnect.innerText = "Hubungkan";
                 
-                // Memicu trigger play secara paksa lewat Javascript Promise
                 const playPromise = elMainVideo.play();
                 if (playPromise !== undefined) {
                     playPromise.then(_ => {
-                        logStatus("Tayangan aktif dan berhasil dirender.");
+                        logStatus("Tayangan aktif. Klik tombol audio untuk mendengarkan.");
                     }).catch(error => {
-                        logStatus("Autoplay diblokir browser, klik area video untuk memutar.");
-                        // Jika diblokir, pasang listener klik darurat untuk memaksa play
+                        logStatus("Autoplay ditahan, klik area layar untuk memutar.");
                         elWrapper.addEventListener('click', () => { elMainVideo.play(); }, { once: true });
                     });
                 }
@@ -246,10 +246,17 @@
         // --- HANDLER SHARE SCREEN ---
         btnStartShare.addEventListener('click', async () => {
             try {
+                // PENYEMPURNAAN KONTROL AUDIO UTAMA (Mematikan filter suara mic agar audio sistem jernih)
                 screenStream = await navigator.mediaDevices.getDisplayMedia({
                     video: true,
-                    audio: true
+                    audio: {
+                        echoCancellation: false,
+                        noiseSuppression: false,
+                        autoGainControl: false
+                    }
                 });
+
+                // Set trek audio keluar sesuai status kontrol internal
                 screenStream.getAudioTracks().forEach(t => t.enabled = isAudioEnabled);
 
                 elMainVideo.srcObject = screenStream;
@@ -258,7 +265,12 @@
                 elPlaceholder.classList.add('hidden');
                 btnStartShare.classList.add('hidden');
                 btnStopShare.classList.remove('hidden');
-                logStatus("Berbagi layar aktif.");
+                
+                if (screenStream.getAudioTracks().length === 0) {
+                    logStatus("Aktif tanpa audio. (Ingat pilih opsi TAB jika ingin suara ikut)");
+                } else {
+                    logStatus("Berbagi layar aktif. Menunggu penonton.");
+                }
 
                 screenStream.getVideoTracks()[0].onended = () => stopScreenShare();
             } catch (err) {
@@ -273,22 +285,24 @@
             }
             elMainVideo.classList.add('hidden');
             btnFullscreen.classList.add('hidden');
-            elPlaceholder.rmove && elPlaceholder.classList.remove('hidden');
+            if(elPlaceholder) elPlaceholder.classList.remove('hidden');
             btnStartShare.classList.remove('hidden');
             btnStopShare.classList.add('hidden');
             logStatus("Berbagi layar dihentikan.");
         }
         btnStopShare.addEventListener('click', stopScreenShare);
 
-        // --- TOGGLE AUDIO ---
+        // --- TOGGLE AUDIO (UNMUTE SECARA NYATA PADA DOM) ---
         btnToggleAudio.addEventListener('click', () => {
             isAudioEnabled = !isAudioEnabled;
+            
+            // Sisi Penonton: Membuka sumbatan elemen video agar suara terdengar nyata
+            elMainVideo.muted = !isAudioEnabled;
+            
+            // Sisi Host: Mengirim/menonaktifkan trek audio ke jaringan
             if (screenStream) {
                 screenStream.getAudioTracks().forEach(t => t.enabled = isAudioEnabled);
             }
-            
-            // Unmute video utama jika viewer ingin mendengarkan suara share screen host
-            elMainVideo.muted = !isAudioEnabled;
 
             if (isAudioEnabled) {
                 document.getElementById('icon-audio').setAttribute('data-lucide', 'volume-2');
