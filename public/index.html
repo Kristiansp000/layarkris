@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Premium Screen Share Studio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: { zinc: { 950: '#09090b' } }
+                }
+            }
+        }
+    </script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Mencegah bouncing scroll yang mengganggu di iOS/Mobile */
+        html, body {
+            overflow-x: hidden;
+            height: 100%;
+        }
+    </style>
+</head>
+<body class="bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 min-h-screen flex flex-col justify-between font-sans antialiased transition-colors duration-200">
+
+    <!-- Header -->
+    <header class="p-4 md:p-5 border-b border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 backdrop-blur sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto flex justify-between items-center gap-4">
+            <div class="flex items-center gap-2 min-w-0">
+                <i data-lucide="monitor" class="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0"></i>
+                <span class="text-sm md:text-base font-semibold tracking-tight truncate">Layar KRIS</span>
+            </div>
+            <div class="flex items-center gap-2 md:gap-4 shrink-0">
+                <div id="peer-id-display" class="text-[10px] md:text-xs bg-zinc-100 dark:bg-zinc-800 px-2.5 md:px-4 py-1.5 md:py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 font-mono text-zinc-600 dark:text-zinc-400 whitespace-nowrap">
+                    Menghubungkan...
+                </div>
+                <button id="btn-theme-toggle" class="p-1.5 md:p-2 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition">
+                    <i id="theme-icon" data-lucide="sun" class="w-4 h-4 text-zinc-600 dark:text-zinc-400"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 flex flex-col lg:flex-row gap-5 lg:gap-6 items-center justify-center auto-rows-min">
+        
+        <!-- Video Presentation Area -->
+        <div id="video-wrapper" class="w-full lg:w-2/3 aspect-video bg-white dark:bg-zinc-900 rounded-xl overflow-hidden relative border border-zinc-200 dark:border-zinc-800 shadow-sm flex items-center justify-center group order-1">
+            <video id="main-video" autoplay playsinline class="w-full h-full object-contain hidden"></video>
+            
+            <!-- Placeholder -->
+            <div id="video-placeholder" class="text-center p-4">
+                <div class="w-10 h-10 md:w-12 md:h-12 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl flex items-center justify-center mx-auto mb-3">
+                    <i data-lucide="tv" class="w-4 h-4 md:w-5 md:h-5 text-zinc-400"></i>
+                </div>
+                <p class="text-xs md:text-sm text-zinc-500 dark:text-zinc-400">Belum ada tayangan aktif</p>
+            </div>
+
+            <!-- Fullscreen Button -->
+            <button id="btn-fullscreen" class="absolute top-3 right-3 md:top-4 md:right-4 p-2 bg-black/60 hover:bg-black/80 text-white rounded-lg transition opacity-100 lg:opacity-0 lg:group-hover:opacity-100 focus:opacity-100 hidden">
+                <i data-lucide="expand" class="w-4 h-4"></i>
+            </button>
+
+            <!-- Status Logs -->
+            <div id="status-log" class="absolute bottom-3 left-3 md:bottom-4 md:left-4 bg-zinc-100/90 dark:bg-zinc-800/90 border border-zinc-200 dark:border-zinc-700 text-[9px] md:text-[10px] font-mono px-2 py-0.5 md:py-1 rounded text-zinc-500 max-w-[80%] truncate">
+                System: Ready
+            </div>
+        </div>
+
+        <!-- Control Center Panel -->
+        <div class="w-full lg:w-1/3 flex flex-col sm:flex-row lg:flex-col gap-4 order-2 lg:self-stretch lg:justify-center">
+            
+            <!-- Panel 1: Main Controls (Broadcast) -->
+            <div class="flex-1 p-5 md:p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl flex flex-col justify-between gap-4 shadow-sm">
+                <div>
+                    <h2 class="text-[10px] md:text-xs font-semibold tracking-wide text-zinc-400 dark:text-zinc-500 uppercase mb-3">Kontrol Penyiaran</h2>
+                    <button id="btn-start-share" class="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg text-xs md:text-sm transition flex items-center justify-center gap-2">
+                        <i data-lucide="screen-share" class="w-4 h-4"></i> Bagikan Layar
+                    </button>
+                    <button id="btn-stop-share" class="w-full py-2.5 px-4 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg text-xs md:text-sm transition hidden flex items-center justify-center gap-2">
+                        <i data-lucide="stop-circle" class="w-4 h-4"></i> Hentikan Berbagi
+                    </button>
+                </div>
+
+                <!-- Audio Switcher -->
+                <div class="border-t border-zinc-100 dark:border-zinc-800 pt-3 flex items-center justify-between gap-2">
+                    <span class="text-xs text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5 min-w-0 truncate">
+                        <i data-lucide="volume-2" class="w-3.5 h-3.5 shrink-0"></i> Suara Share Screen
+                    </span>
+                    <button id="btn-toggle-audio" class="py-1.5 px-3 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs font-medium hover:bg-zinc-50 dark:hover:bg-zinc-800 transition flex items-center gap-1.5 bg-blue-50 dark:bg-blue-900/20 border-blue-500/50 text-blue-600 dark:text-blue-400 shrink-0">
+                        <i id="icon-audio" class="w-3.5 h-3.5" data-lucide="volume-2"></i> <span id="txt-audio">On</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Panel 2: Watch Control -->
+            <div class="flex-1 p-5 md:p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl flex flex-col justify-center gap-3 shadow-sm">
+                <h2 class="text-[10px] md:text-xs font-semibold tracking-wide text-zinc-400 dark:text-zinc-500 uppercase">Hubungkan</h2>
+                <div class="flex gap-2">
+                    <input type="text" id="input-target-id" maxlength="3" placeholder="ID 3 digit..." class="w-full min-w-0 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-xs md:text-sm font-mono focus:outline-none focus:border-blue-500 placeholder-zinc-400 text-zinc-800 dark:text-zinc-200">
+                    <button id="btn-connect" class="px-3 md:px-4 py-2 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-medium rounded-lg text-xs md:text-sm hover:bg-zinc-800 dark:hover:bg-zinc-200 transition flex items-center gap-1.5 shrink-0">
+                        <i data-lucide="play" class="w-3.5 h-3.5"></i> Hubungkan
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="p-4 text-center text-[10px] md:text-[11px] text-zinc-400 dark:text-zinc-600 border-t border-zinc-100 dark:border-zinc-900 shrink-0">
+        Minimalist Studio &copy; 2026
+    </footer>
+
+    <script>
+        const APP_PREFIX = "IKADO_ROOM_"; 
+
+        function generateShortId() {
+            const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+            let result = '';
+            for (let i = 0; i < 3; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result;
+        }
+
+        const shortRoomId = generateShortId();
+        const fullCustomId = APP_PREFIX + shortRoomId; 
+
+        const peer = new Peer(fullCustomId, {
+            host: '0.peerjs.com',
+            port: 443,
+            secure: true,
+            config: {
+                'iceServers': [
+                    { url: 'stun:stun.l.google.com:19302' },
+                    { url: 'stun:stun1.l.google.com:19302' }
+                ]
+            }
+        });
+
+        let screenStream = null;
+        let isAudioEnabled = true;
+
+        const elPeerId = document.getElementById('peer-id-display');
+        const elMainVideo = document.getElementById('main-video');
+        const elWrapper = document.getElementById('video-wrapper');
+        const elPlaceholder = document.getElementById('video-placeholder');
+        const elLog = document.getElementById('status-log');
+        
+        const btnStartShare = document.getElementById('btn-start-share');
+        const btnStopShare = document.getElementById('btn-stop-share');
+        const btnToggleAudio = document.getElementById('btn-toggle-audio');
+        const btnFullscreen = document.getElementById('btn-fullscreen');
+        const btnConnect = document.getElementById('btn-connect');
+        const inputTargetId = document.getElementById('input-target-id');
+
+        function logStatus(msg) {
+            elLog.innerText = `System: ${msg}`;
+            console.log(msg);
+        }
+
+        peer.on('open', (id) => {
+            elPeerId.innerHTML = `Room ID: <b class="text-blue-600 dark:text-blue-400 select-all tracking-wider">${shortRoomId}</b>`;
+            logStatus("Server siap. Masuk ke mode standby.");
+        });
+
+        peer.on('connection', (conn) => {
+            conn.on('data', (data) => {
+                if (data.type === 'REQUEST_STREAM') {
+                    logStatus(`Menerima permintaan dari Viewer. Menghubungkan video...`);
+                    
+                    if (screenStream) {
+                        let outboundStream = new MediaStream();
+                        screenStream.getVideoTracks().forEach(t => outboundStream.addTrack(t));
+                        if (isAudioEnabled) {
+                            screenStream.getAudioTracks().forEach(t => outboundStream.addTrack(t));
+                        }
+                        peer.call(data.viewerId, outboundStream);
+                    } else {
+                        logStatus("Gagal kirim balik: Anda belum aktif berbagi layar.");
+                    }
+                }
+            });
+        });
+
+        peer.on('call', (call) => {
+            logStatus("Menerima tayangan video asli. Menampilkan gambar...");
+            call.answer(); 
+            
+            call.on('stream', (remoteStream) => {
+                elMainVideo.srcObject = remoteStream;
+                elMainVideo.classList.remove('hidden');
+                btnFullscreen.classList.remove('hidden');
+                elPlaceholder.classList.add('hidden');
+                btnConnect.innerText = "Hubungkan";
+            });
+        });
+
+        btnStartShare.addEventListener('click', async () => {
+            try {
+                screenStream = await navigator.mediaDevices.getDisplayMedia({
+                    video: true,
+                    audio: true
+                });
+                screenStream.getAudioTracks().forEach(t => t.enabled = isAudioEnabled);
+
+                elMainVideo.srcObject = screenStream;
+                elMainVideo.classList.remove('hidden');
+                btnFullscreen.classList.remove('hidden');
+                elPlaceholder.classList.add('hidden');
+                btnStartShare.classList.add('hidden');
+                btnStopShare.classList.remove('hidden');
+                logStatus("Berbagi layar aktif. Siap menerima penonton.");
+
+                screenStream.getVideoTracks()[0].onended = () => stopScreenShare();
+            } catch (err) {
+                logStatus("Gagal membagikan layar.");
+            }
+        });
+
+        function stopScreenShare() {
+            if (screenStream) {
+                screenStream.getTracks().forEach(t => t.stop());
+                screenStream = null;
+            }
+            elMainVideo.classList.add('hidden');
+            btnFullscreen.classList.add('hidden');
+            elPlaceholder.classList.remove('hidden');
+            btnStartShare.classList.remove('hidden');
+            btnStopShare.classList.add('hidden');
+            logStatus("Berbagi layar dihentikan.");
+        }
+        btnStopShare.addEventListener('click', stopScreenShare);
+
+        btnToggleAudio.addEventListener('click', () => {
+            isAudioEnabled = !isAudioEnabled;
+            if (screenStream) {
+                screenStream.getAudioTracks().forEach(t => t.enabled = isAudioEnabled);
+            }
+            if (isAudioEnabled) {
+                document.getElementById('icon-audio').setAttribute('data-lucide', 'volume-2');
+                document.getElementById('txt-audio').innerText = "On";
+                btnToggleAudio.className = "py-1.5 px-3 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs font-medium hover:bg-zinc-50 dark:hover:bg-zinc-800 transition flex items-center gap-1.5 bg-blue-50 dark:bg-blue-900/20 border-blue-500/50 text-blue-600 dark:text-blue-400 shrink-0";
+            } else {
+                document.getElementById('icon-audio').setAttribute('data-lucide', 'volume-x');
+                document.getElementById('txt-audio').innerText = "Off";
+                btnToggleAudio.className = "py-1.5 px-3 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs font-medium hover:bg-zinc-50 dark:hover:bg-zinc-800 transition flex items-center gap-1.5 text-zinc-500 dark:text-zinc-400 shrink-0";
+            }
+            lucide.createIcons();
+        });
+
+        btnFullscreen.addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                elWrapper.requestFullscreen().catch(() => elMainVideo.requestFullscreen());
+            } else {
+                document.exitFullscreen();
+            }
+        });
+
+        document.addEventListener('fullscreenchange', () => {
+            btnFullscreen.innerHTML = document.fullscreenElement ? `<i data-lucide="minimize" class="w-4 h-4"></i>` : `<i data-lucide="expand" class="w-4 h-4"></i>`;
+            lucide.createIcons();
+        });
+
+        btnConnect.addEventListener('click', () => {
+            const targetId = inputTargetId.value.trim().toUpperCase();
+            if (targetId.length !== 3) {
+                alert("Masukkan 3 digit Room ID Host!");
+                return;
+            }
+
+            const finalTargetId = APP_PREFIX + targetId;
+            logStatus(`Menghubungkan ke Host: ${targetId}...`);
+            btnConnect.innerText = "Menghubungkan...";
+
+            const conn = peer.connect(finalTargetId);
+            conn.on('open', () => {
+                conn.send({
+                    type: 'REQUEST_STREAM',
+                    viewerId: fullCustomId
+                });
+            });
+            
+            conn.on('error', () => {
+                logStatus("Koneksi gagal. Periksa kembali ID Host.");
+                btnConnect.innerText = "Hubungkan";
+            });
+        });
+
+        // Toggle Dark/Light Mode
+        const themeToggleBtn = document.getElementById('btn-theme-toggle');
+        const themeIcon = document.getElementById('theme-icon');
+        themeToggleBtn.addEventListener('click', () => {
+            if (document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.remove('dark');
+                themeIcon.setAttribute('data-lucide', 'moon');
+            } else {
+                document.documentElement.classList.add('dark');
+                themeIcon.setAttribute('data-lucide', 'sun');
+            }
+            lucide.createIcons();
+        });
+
+        lucide.createIcons();
+    </script>
+</body>
+</html>
