@@ -71,9 +71,9 @@
                 </div>
             </div>
 
-            <!-- Mobile Pop-up Feature Window Button (Hidden by default, shown via JS on mobile) -->
-            <button id="btn-mobile-popup" class="w-full py-2 px-4 bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900 font-medium rounded-lg text-xs transition flex items-center justify-center gap-2 hidden">
-                <i data-lucide="external-link" class="w-3.5 h-3.5"></i> Buka Jendela Pop-up (PIP Mode)
+            <!-- Native Picture-in-Picture Button for Mobile & Desktop -->
+            <button id="btn-mobile-popup" class="w-full py-2.5 px-4 bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900 font-medium rounded-lg text-xs md:text-sm transition flex items-center justify-center gap-2 hidden">
+                <i data-lucide="external-link" class="w-4 h-4"></i> Aktifkan Mode Pop-up (Floating Window)
             </button>
         </div>
 
@@ -105,10 +105,10 @@
 
             <!-- Panel 2: Watch Control -->
             <div class="flex-1 p-5 md:p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl flex flex-col justify-center gap-3 shadow-sm">
-                <h2 class="text-[10px] md:text-xs font-semibold tracking-wide text-zinc-400 dark:text-zinc-500 uppercase">Hubungkan</h2>
+                <h2 class="text-[10px] md:text-xs font-semibold tracking-wide text-zinc-400 dark:text-zinc-500 uppercase">Hubunakan</h2>
                 <div class="flex gap-2">
                     <input type="text" id="input-target-id" maxlength="3" placeholder="ID 3 digit..." class="w-full min-w-0 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-xs md:text-sm font-mono focus:outline-none focus:border-blue-500 placeholder-zinc-400 text-zinc-800 dark:text-zinc-200">
-                    <button id="btn-connect" class="px-3 md:px-4 py-2 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-medium rounded-lg text-xs md:text-sm hover:bg-zinc-800 dark:hover:bg-zinc-200 transition flex items-center gap-1.5 shrink-0">
+                    <button id="btn-connect" class="px-3 md:px-4 py-2 bg-zinc-900 dark:dark:bg-zinc-100 text-white dark:text-zinc-900 font-medium rounded-lg text-xs md:text-sm hover:bg-zinc-800 dark:hover:bg-zinc-200 transition flex items-center gap-1.5 shrink-0">
                         <i data-lucide="play" class="w-3.5 h-3.5"></i> Hubungkan
                     </button>
                 </div>
@@ -136,7 +136,6 @@
 
         const shortRoomId = generateShortId();
         const fullCustomId = APP_PREFIX + shortRoomId; 
-
         const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
         
         const peerConfig = {
@@ -145,9 +144,7 @@
                 'iceServers': [
                     { urls: 'stun:stun.l.google.com:19302' },
                     { urls: 'stun:stun1.l.google.com:19302' },
-                    { urls: 'stun:stun2.l.google.com:19302' },
-                    { urls: 'stun:stun3.l.google.com:19302' },
-                    { urls: 'stun:stun4.l.google.com:19302' }
+                    { urls: 'stun:stun2.l.google.com:19302' }
                 ],
                 'sdpSemantics': 'unified-plan'
             }
@@ -163,7 +160,6 @@
         }
 
         const peer = new Peer(fullCustomId, peerConfig);
-
         let screenStream = null;
         let isAudioEnabled = false;
 
@@ -181,42 +177,43 @@
         const btnConnect = document.getElementById('btn-connect');
         const inputTargetId = document.getElementById('input-target-id');
 
-        // Deteksi Device Mobile
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        if (isMobile) {
-            btnMobilePopup.classList.remove('hidden'); // Tampilkan tombol pop-up window khusus mobile
+        // Tampilkan tombol PIP jika didukung oleh browser/perangkat mobile
+        if (document.pictureInPictureEnabled || elMainVideo.webkitSupportsFullscreen) {
+            btnMobilePopup.classList.remove('hidden');
         }
 
         function logStatus(msg) {
             elLog.innerText = `System: ${msg}`;
-            console.log(msg);
+        }
+
+        // TWEAK AUDIO KUALITAS TINGGI (Memaksa Bitrate Opus ke 320kbps Stereo)
+        function forceHighQualityAudio(sdp) {
+            return sdp.replace('useinbandfec=1', 'useinbandfec=1;stereo=1;maxaveragebitrate=320000');
         }
 
         peer.on('open', (id) => {
             elPeerId.innerHTML = `Room ID: <b class="text-blue-600 dark:text-blue-400 select-all tracking-wider">${shortRoomId}</b>`;
-            logStatus("Server siap di cloud Vercel.");
-        });
-
-        peer.on('error', (err) => {
-            logStatus(`Error: ${err.type}`);
-            if (err.type === 'peer-unavailable') {
-                alert("Room ID salah atau Host belum aktif membagikan layar.");
-                btnConnect.innerText = "Hubungkan";
-            }
+            logStatus("Server siap di cloud.");
         });
 
         // SISI HOST
         peer.on('connection', (conn) => {
             conn.on('data', (data) => {
-                if (data.type === 'REQUEST_STREAM') {
-                    logStatus(`Penonton terhubung, menyalurkan media...`);
-                    if (screenStream) {
-                        let outboundStream = new MediaStream();
-                        screenStream.getVideoTracks().forEach(t => outboundStream.addTrack(t));
-                        screenStream.getAudioTracks().forEach(t => outboundStream.addTrack(t));
-                        peer.call(data.viewerId, outboundStream);
-                    } else {
-                        logStatus("Gagal kirim: Anda belum menekan tombol Bagikan Layar.");
+                if (data.type === 'REQUEST_STREAM' && screenStream) {
+                    logStatus(`Penonton terhubung...`);
+                    let outboundStream = new MediaStream();
+                    screenStream.getVideoTracks().forEach(t => outboundStream.addTrack(t));
+                    screenStream.getAudioTracks().forEach(t => outboundStream.addTrack(t));
+                    
+                    const call = peer.call(data.viewerId, outboundStream);
+                    
+                    // Modifikasi SDP sebelum dikirim ke penonton agar kualitas audio maksimal
+                    if (call.peerConnection) {
+                        call.peerConnection.addEventListener('negotiationneeded', async () => {
+                            const offer = await call.peerConnection.createOffer();
+                            let highQualitySdp = forceHighQualityAudio(offer.sdp);
+                            await call.peerConnection.setLocalDescription({ type: 'offer', sdp: highQualitySdp });
+                        });
                     }
                 }
             });
@@ -224,44 +221,36 @@
 
         // SISI PENONTON (VIEWER)
         peer.on('call', (call) => {
-            logStatus("Menerima feed media asli...");
+            logStatus("Menerima enkripsi video...");
             call.answer(); 
             
             call.on('stream', (remoteStream) => {
-                window.remoteStreamData = remoteStream; // Simpan global agar bisa diakses pop-up window jika dibuka
                 elMainVideo.srcObject = remoteStream;
-                
                 elMainVideo.classList.remove('hidden');
                 btnFullscreen.classList.remove('hidden');
                 elPlaceholder.classList.add('hidden');
                 btnConnect.innerText = "Hubungkan";
-                
-                const playPromise = elMainVideo.play();
-                if (playPromise !== undefined) {
-                    playPromise.then(_ => {
-                        logStatus("Tayangan aktif. Klik tombol audio untuk mendengarkan.");
-                    }).catch(error => {
-                        logStatus("Autoplay ditahan, klik area layar untuk memutar.");
-                        elWrapper.addEventListener('click', () => { elMainVideo.play(); }, { once: true });
-                    });
-                }
+                elMainVideo.play().catch(() => {
+                    logStatus("Autoplay diblokir, ketuk area layar.");
+                    elWrapper.addEventListener('click', () => { elMainVideo.play(); }, { once: true });
+                });
             });
         });
 
-        // --- HANDLER SHARE SCREEN ---
+        // --- HANDLER SHARE SCREEN (HIGH FIDELITY AUDIO AUDIO SETTING) ---
         btnStartShare.addEventListener('click', async () => {
             try {
                 screenStream = await navigator.mediaDevices.getDisplayMedia({
-                    video: true,
+                    video: { frameRate: { ideal: 30, max: 60 } },
                     audio: {
-                        echoCancellation: false,
-                        noiseSuppression: false,
-                        autoGainControl: false
+                        echoCancellation: false,   // Mematikan filter pembatal gema agar musik tidak terpotong
+                        noiseSuppression: false,   // Mematikan peredam bising agar audio berfrekuensi tinggi tetap jernih
+                        autoGainControl: false,    // Mematikan normalisasi otomatis agar dinamika suara terjaga
+                        channelCount: 2            // Memaksa mode stereo
                     }
                 });
 
                 screenStream.getAudioTracks().forEach(t => t.enabled = isAudioEnabled);
-
                 elMainVideo.srcObject = screenStream;
                 elMainVideo.classList.remove('hidden');
                 btnFullscreen.classList.remove('hidden');
@@ -269,10 +258,10 @@
                 btnStartShare.classList.add('hidden');
                 btnStopShare.classList.remove('hidden');
                 
-                logStatus("Berbagi layar aktif. Menunggu penonton.");
                 screenStream.getVideoTracks()[0].onended = () => stopScreenShare();
+                logStatus("Berbagi layar kualitas tinggi aktif.");
             } catch (err) {
-                logStatus("Izin akses berbagi layar ditolak.");
+                logStatus("Izin berbagi layar ditolak.");
             }
         });
 
@@ -286,7 +275,6 @@
             if(elPlaceholder) elPlaceholder.classList.remove('hidden');
             btnStartShare.classList.remove('hidden');
             btnStopShare.classList.add('hidden');
-            logStatus("Berbagi layar dihentikan.");
         }
         btnStopShare.addEventListener('click', stopScreenShare);
 
@@ -294,7 +282,6 @@
         btnToggleAudio.addEventListener('click', () => {
             isAudioEnabled = !isAudioEnabled;
             elMainVideo.muted = !isAudioEnabled;
-            
             if (screenStream) {
                 screenStream.getAudioTracks().forEach(t => t.enabled = isAudioEnabled);
             }
@@ -311,78 +298,36 @@
             lucide.createIcons();
         });
 
-        // --- FIX FULLSCREEN MOBILE SYSTEM ---
+        // --- FIX FULLSCREEN MOBILE (NATIVE CORRECTION) ---
         btnFullscreen.addEventListener('click', () => {
-            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-                // Skenario 1: Coba mode standar Wrapper DOM
-                if (elWrapper.requestFullscreen) {
-                    elWrapper.requestFullscreen().catch(() => launchDirectVideoFullscreen());
-                } else if (elWrapper.webkitRequestFullscreen) {
-                    elWrapper.webkitRequestFullscreen();
-                } else {
-                    launchDirectVideoFullscreen();
-                }
+            // Pada Mobile/iOS, langsung paksa elemen video masuk ke mode fullscreen bawaan OS
+            if (elMainVideo.webkitEnterFullscreen) {
+                elMainVideo.webkitEnterFullscreen();
+            } else if (elMainVideo.requestFullscreen) {
+                elMainVideo.requestFullscreen();
             } else {
-                if (document.exitFullscreen) {
-                    document.exitFullscreen();
-                } else if (document.webkitExitFullscreen) {
-                    document.webkitExitFullscreen();
-                }
+                // Alternatif fallback jika wrapper diizinkan oleh sistem android lama
+                if (elWrapper.requestFullscreen) elWrapper.requestFullscreen();
             }
         });
 
-        // Fallback Khusus Mobile: Menembak langsung ke Core Video Tag (Sangat ampuh di iOS/Safari Mobile)
-        function launchDirectVideoFullscreen() {
-            if (elMainVideo.requestFullscreen) {
-                elMainVideo.requestFullscreen();
-            } else if (elMainVideo.webkitEnterFullscreen) {
-                elMainVideo.webkitEnterFullscreen(); // Perintah native iOS media player fullscreen
-            } else if (elMainVideo.webkitRequestFullscreen) {
-                elMainVideo.webkitRequestFullscreen();
-            } else {
-                alert("Device ini tidak mendukung API Fullscreen. Silakan gunakan fitur Jendela Pop-up!");
-            }
-        }
-
-        // --- FUNGSI POP-UP WINDOW KHUSUS DEVICE MOBILE ---
-        btnMobilePopup.addEventListener('click', () => {
-            if (!elMainVideo.srcObject && !window.remoteStreamData) {
-                alert("Belum ada tayangan aktif untuk dijadikan pop-up!");
+        // --- FIX POP-UP FLOATING WINDOW (NATIVE PIP SYSTEM) ---
+        btnMobilePopup.addEventListener('click', async () => {
+            if (!elMainVideo.srcObject) {
+                alert("Belum ada tayangan aktif!");
                 return;
             }
-
-            // Membuka jendela baru berukuran kecil terisolasi di pojok bawah (Simulasi Picture-in-Picture murni)
-            const popup = window.open("", "LayarKRIS_Popup", "width=480,height=270,scrollbars=no,resizable=yes,status=no,location=no,toolbar=no,menubar=no");
-            
-            if (!popup) {
-                alert("Pop-up diblokir browser! Izinkan izin pop-up untuk aplikasi ini di pengaturan browser Anda.");
-                return;
+            try {
+                if (document.pictureInPictureEnabled && !document.pictureInPictureElement) {
+                    // Browser Android / Desktop Chrome murni
+                    await elMainVideo.requestPictureInPicture();
+                } else if (elMainVideo.webkitSupportsFullscreen) {
+                    // iOS Safari fallback murni
+                    elMainVideo.webkitEnterFullscreen();
+                }
+            } catch (error) {
+                logStatus("Gagal membuka jendela mengambang.");
             }
-
-            // Menyuntikkan struktur HTML & CSS Tailwind ke dalam jendela pop-up baru
-            popup.document.write(`
-                <html>
-                <head>
-                    <title>Layar KRIS - Pop-up Viewer</title>
-                    <script src="https://cdn.tailwindcss.com"><\/script>
-                    <style>body { margin: 0; background: #09090b; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }</style>
-                </head>
-                <body class="bg-zinc-950">
-                    <video id="popup-video" autoplay playsinline class="w-full h-full object-contain"></video>
-                </body>
-                </html>
-            `);
-            popup.document.close();
-
-            // Memindahkan stream berjalan dari jendela utama menuju jendela pop-up secara langsung tanpa memutus WebRTC
-            popup.onload = function() {
-                const popupVideo = popup.document.getElementById('popup-video');
-                popupVideo.srcObject = elMainVideo.srcObject || window.remoteStreamData;
-                popupVideo.muted = elMainVideo.muted;
-                popupVideo.play().catch(() => {
-                    popup.document.body.addEventListener('click', () => { popupVideo.play(); });
-                });
-            };
         });
 
         // --- ACTION CONNECT ---
@@ -394,15 +339,12 @@
             }
 
             const finalTargetId = APP_PREFIX + targetId;
-            logStatus(`Meminta jabat tangan ke Host...`);
+            logStatus(`Menghubungkan ke Host...`);
             btnConnect.innerText = "Connecting...";
 
             const conn = peer.connect(finalTargetId);
             conn.on('open', () => {
-                conn.send({
-                    type: 'REQUEST_STREAM',
-                    viewerId: fullCustomId
-                });
+                conn.send({ type: 'REQUEST_STREAM', viewerId: fullCustomId });
             });
         });
 
