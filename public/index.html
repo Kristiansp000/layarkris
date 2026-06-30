@@ -49,7 +49,8 @@
         
         <!-- Video Presentation Area -->
         <div id="video-wrapper" class="w-full lg:w-2/3 aspect-video bg-white dark:bg-zinc-900 rounded-xl overflow-hidden relative border border-zinc-200 dark:border-zinc-800 shadow-sm flex items-center justify-center group order-1">
-            <video id="main-video" autoplay playsinline class="w-full h-full object-contain hidden"></video>
+            <!-- FIX: Ditambahkan 'muted' dan 'controls' opsional secara programatis untuk memecah Autoplay Block di Vercel -->
+            <video id="main-video" autoplay playsinline muted class="w-full h-full object-contain hidden"></video>
             
             <!-- Placeholder -->
             <div id="video-placeholder" class="text-center p-4">
@@ -98,7 +99,7 @@
 
             <!-- Panel 2: Watch Control -->
             <div class="flex-1 p-5 md:p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl flex flex-col justify-center gap-3 shadow-sm">
-                <h2 class="text-[10px] md:text-xs font-semibold tracking-wide text-zinc-400 dark:text-zinc-500 uppercase">Hubungkan</h2>
+                <h2 class="text-[10px] md:text-xs font-semibold tracking-wide text-zinc-400 dark:text-zinc-500 uppercase">Hubunakan</h2>
                 <div class="flex gap-2">
                     <input type="text" id="input-target-id" maxlength="3" placeholder="ID 3 digit..." class="w-full min-w-0 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-xs md:text-sm font-mono focus:outline-none focus:border-blue-500 placeholder-zinc-400 text-zinc-800 dark:text-zinc-200">
                     <button id="btn-connect" class="px-3 md:px-4 py-2 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-medium rounded-lg text-xs md:text-sm hover:bg-zinc-800 dark:hover:bg-zinc-200 transition flex items-center gap-1.5 shrink-0">
@@ -130,12 +131,11 @@
         const shortRoomId = generateShortId();
         const fullCustomId = APP_PREFIX + shortRoomId; 
 
-        // PENYEMPURNAAN UTAMA: Penambahan multi-STUN Server Google & perpanjangan timeout interkoneksi
-        const peer = new Peer(fullCustomId, {
-            host: '0.peerjs.com',
-            port: 443,
-            secure: true,
-            pingInterval: 3000, // Menjaga detak koneksi cloud agar tidak mudah timeout/putus
+        // FIX VERCEL: Deteksi otomatis environment untuk mencegah bentrokan port SSL/Websocket
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        
+        const peerConfig = {
+            debug: 1,
             config: {
                 'iceServers': [
                     { urls: 'stun:stun.l.google.com:19302' },
@@ -146,11 +146,22 @@
                 ],
                 'sdpSemantics': 'unified-plan'
             }
-        });
+        };
+
+        // Jika tidak di localhost (berarti di Vercel HTTPS), gunakan konfigurasi cloud default Cloud PeerJS tanpa mengunci port 443 secara kaku
+        if (!isLocalhost) {
+            peerConfig.host = '0.peerjs.com';
+            peerConfig.secure = true;
+        } else {
+            peerConfig.host = '0.peerjs.com';
+            peerConfig.port = 443;
+            peerConfig.secure = true;
+        }
+
+        const peer = new Peer(fullCustomId, peerConfig);
 
         let screenStream = null;
         let isAudioEnabled = true;
-        let activeConnections = []; // Menyimpan daftar koneksi data penonton yang aktif
 
         const elPeerId = document.getElementById('peer-id-display');
         const elMainVideo = document.getElementById('main-video');
@@ -172,28 +183,22 @@
 
         peer.on('open', (id) => {
             elPeerId.innerHTML = `Room ID: <b class="text-blue-600 dark:text-blue-400 select-all tracking-wider">${shortRoomId}</b>`;
-            logStatus("Server siap. Masuk ke mode standby.");
+            logStatus("Server siap di cloud Vercel.");
         });
 
-        // Manajemen Error Global Jaringan PeerJS
         peer.on('error', (err) => {
-            logStatus(`Koneksi Error: ${err.type}`);
+            logStatus(`Error: ${err.type}`);
             if (err.type === 'peer-unavailable') {
-                alert("Room ID tidak ditemukan! Pastikan Host sudah siap dan mengetikkan ID dengan benar.");
+                alert("Room ID salah atau Host belum aktif membagikan layar.");
                 btnConnect.innerText = "Hubungkan";
             }
-            if (err.type === 'network' || err.type === 'server-error') {
-                logStatus("Masalah jaringan cloud. Mencoba memulihkan...");
-            }
         });
 
-        // SISI HOST: Menangani permintaan jabat tangan masuk
+        // SISI HOST
         peer.on('connection', (conn) => {
-            activeConnections.push(conn);
-
             conn.on('data', (data) => {
                 if (data.type === 'REQUEST_STREAM') {
-                    logStatus(`Menerima penonton baru. Menembak balik jalur video...`);
+                    logStatus(`Penonton terhubung, menyalurkan video...`);
                     
                     if (screenStream) {
                         let outboundStream = new MediaStream();
@@ -201,37 +206,40 @@
                         if (isAudioEnabled) {
                             screenStream.getAudioTracks().forEach(t => outboundStream.addTrack(t));
                         }
-                        
-                        // Eksekusi panggilan balik langsung dengan skema jabat tangan terpaksa
                         peer.call(data.viewerId, outboundStream);
                     } else {
-                        logStatus("Gagal menyalurkan: Anda belum mengaktifkan 'Bagikan Layar'.");
+                        logStatus("Gagal kirim: Anda belum menekan tombol Bagikan Layar.");
                     }
                 }
             });
-
-            conn.on('close', () => {
-                activeConnections = activeConnections.filter(c => c !== conn);
-            });
         });
 
-        // SISI PENONTON: Menerima tembakan balik video dari Host
+        // SISI PENONTON (VIEWER)
         peer.on('call', (call) => {
-            logStatus("Jalur tembus NAT berhasil! Menampilkan tayangan gambar...");
+            logStatus("Menerima enkripsi video asli...");
             call.answer(); 
             
             call.on('stream', (remoteStream) => {
+                // FIX VERCEL: Memaksa manipulasi DOM agar video mau bypass Autoplay Restriction milik browser HTTPS
                 elMainVideo.srcObject = remoteStream;
+                elMainVideo.muted = true; // Harus true di awal agar browser mengizinkan autoplay otomatis
+                
                 elMainVideo.classList.remove('hidden');
                 btnFullscreen.classList.remove('hidden');
                 elPlaceholder.classList.add('hidden');
                 btnConnect.innerText = "Hubungkan";
-                logStatus("Streaming lancar.");
-            });
-
-            call.on('error', (err) => {
-                logStatus("Gagal memuat jalur video internal WebRTC.");
-                btnConnect.innerText = "Hubungkan";
+                
+                // Memicu trigger play secara paksa lewat Javascript Promise
+                const playPromise = elMainVideo.play();
+                if (playPromise !== undefined) {
+                    playPromise.then(_ => {
+                        logStatus("Tayangan aktif dan berhasil dirender.");
+                    }).catch(error => {
+                        logStatus("Autoplay diblokir browser, klik area video untuk memutar.");
+                        // Jika diblokir, pasang listener klik darurat untuk memaksa play
+                        elWrapper.addEventListener('click', () => { elMainVideo.play(); }, { once: true });
+                    });
+                }
             });
         });
 
@@ -239,10 +247,7 @@
         btnStartShare.addEventListener('click', async () => {
             try {
                 screenStream = await navigator.mediaDevices.getDisplayMedia({
-                    video: {
-                        displaySurface: "monitor", // Mengoptimalkan performa tangkapan layar penuh
-                        logicalSurface: true
-                    },
+                    video: true,
                     audio: true
                 });
                 screenStream.getAudioTracks().forEach(t => t.enabled = isAudioEnabled);
@@ -253,12 +258,11 @@
                 elPlaceholder.classList.add('hidden');
                 btnStartShare.classList.add('hidden');
                 btnStopShare.classList.remove('hidden');
-                logStatus("Berbagi layar aktif. Siap menerima penonton.");
+                logStatus("Berbagi layar aktif.");
 
-                // Deteksi jika pengguna menekan tombol bawaan browser "Stop Sharing"
                 screenStream.getVideoTracks()[0].onended = () => stopScreenShare();
             } catch (err) {
-                logStatus("Akses berbagi layar dibatalkan.");
+                logStatus("Izin akses berbagi layar ditolak.");
             }
         });
 
@@ -269,7 +273,7 @@
             }
             elMainVideo.classList.add('hidden');
             btnFullscreen.classList.add('hidden');
-            elPlaceholder.classList.remove('hidden');
+            elPlaceholder.rmove && elPlaceholder.classList.remove('hidden');
             btnStartShare.classList.remove('hidden');
             btnStopShare.classList.add('hidden');
             logStatus("Berbagi layar dihentikan.");
@@ -282,6 +286,10 @@
             if (screenStream) {
                 screenStream.getAudioTracks().forEach(t => t.enabled = isAudioEnabled);
             }
+            
+            // Unmute video utama jika viewer ingin mendengarkan suara share screen host
+            elMainVideo.muted = !isAudioEnabled;
+
             if (isAudioEnabled) {
                 document.getElementById('icon-audio').setAttribute('data-lucide', 'volume-2');
                 document.getElementById('txt-audio').innerText = "On";
@@ -308,39 +316,25 @@
             lucide.createIcons();
         });
 
-        // --- HANDLER BUTTON HUBUNGKAN ---
+        // --- ACTION CONNECT ---
         btnConnect.addEventListener('click', () => {
             const targetId = inputTargetId.value.trim().toUpperCase();
             if (targetId.length !== 3) {
-                alert("Masukkan 3 digit Room ID Host secara lengkap!");
+                alert("Masukkan 3 digit Room ID Host!");
                 return;
             }
 
             const finalTargetId = APP_PREFIX + targetId;
-            logStatus(`Memecah enkripsi NAT ke Host: ${targetId}...`);
-            btnConnect.innerText = "Menghubungkan...";
+            logStatus(`Meminta jabat tangan ke Host...`);
+            btnConnect.innerText = "Connecting...";
 
-            // Membuka koneksi data dengan opsi kebal pemutusan relasi instan
-            const conn = peer.connect(finalTargetId, {
-                reliable: true,
-                serialization: 'json'
-            });
-
+            const conn = peer.connect(finalTargetId);
             conn.on('open', () => {
-                logStatus("Berhasil melakukan jabat tangan data. Meminta video stream...");
                 conn.send({
                     type: 'REQUEST_STREAM',
                     viewerId: fullCustomId
                 });
             });
-            
-            // Timeout pelindung jika server signaling terlalu lambat (Maks 10 Detik)
-            setTimeout(() => {
-                if (btnConnect.innerText === "Menghubungkan...") {
-                    logStatus("Koneksi melampaui batas waktu (Timeout). Mencoba ulang...");
-                    btnConnect.innerText = "Hubungkan";
-                }
-            }, 10000);
         });
 
         // Theme Toggle
