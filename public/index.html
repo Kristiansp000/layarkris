@@ -48,26 +48,33 @@
     <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 flex flex-col lg:flex-row gap-5 lg:gap-6 items-center justify-center auto-rows-min">
         
         <!-- Video Presentation Area -->
-        <div id="video-wrapper" class="w-full lg:w-2/3 aspect-video bg-white dark:bg-zinc-900 rounded-xl overflow-hidden relative border border-zinc-200 dark:border-zinc-800 shadow-sm flex items-center justify-center group order-1">
-            <video id="main-video" autoplay playsinline muted class="w-full h-full object-contain hidden"></video>
-            
-            <!-- Placeholder -->
-            <div id="video-placeholder" class="text-center p-4">
-                <div class="w-10 h-10 md:w-12 md:h-12 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl flex items-center justify-center mx-auto mb-3">
-                    <i data-lucide="tv" class="w-4 h-4 md:w-5 md:h-5 text-zinc-400"></i>
+        <div class="w-full lg:w-2/3 flex flex-col gap-3 order-1">
+            <div id="video-wrapper" class="w-full aspect-video bg-white dark:bg-zinc-900 rounded-xl overflow-hidden relative border border-zinc-200 dark:border-zinc-800 shadow-sm flex items-center justify-center group">
+                <video id="main-video" autoplay playsinline muted class="w-full h-full object-contain hidden"></video>
+                
+                <!-- Placeholder -->
+                <div id="video-placeholder" class="text-center p-4">
+                    <div class="w-10 h-10 md:w-12 md:h-12 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl flex items-center justify-center mx-auto mb-3">
+                        <i data-lucide="tv" class="w-4 h-4 md:w-5 md:h-5 text-zinc-400"></i>
+                    </div>
+                    <p class="text-xs md:text-sm text-zinc-500 dark:text-zinc-400">Belum ada tayangan aktif</p>
                 </div>
-                <p class="text-xs md:text-sm text-zinc-500 dark:text-zinc-400">Belum ada tayangan aktif</p>
+
+                <!-- Fullscreen Button -->
+                <button id="btn-fullscreen" class="absolute top-3 right-3 md:top-4 md:right-4 p-2 bg-black/60 hover:bg-black/80 text-white rounded-lg transition opacity-100 lg:opacity-0 lg:group-hover:opacity-100 focus:opacity-100 hidden">
+                    <i data-lucide="expand" class="w-4 h-4"></i>
+                </button>
+
+                <!-- Status Logs -->
+                <div id="status-log" class="absolute bottom-3 left-3 md:bottom-4 md:left-4 bg-zinc-100/90 dark:bg-zinc-800/90 border border-zinc-200 dark:border-zinc-700 text-[9px] md:text-[10px] font-mono px-2 py-0.5 md:py-1 rounded text-zinc-500 max-w-[80%] truncate">
+                    System: Ready
+                </div>
             </div>
 
-            <!-- Fullscreen Button -->
-            <button id="btn-fullscreen" class="absolute top-3 right-3 md:top-4 md:right-4 p-2 bg-black/60 hover:bg-black/80 text-white rounded-lg transition opacity-100 lg:opacity-0 lg:group-hover:opacity-100 focus:opacity-100 hidden">
-                <i data-lucide="expand" class="w-4 h-4"></i>
+            <!-- Mobile Pop-up Feature Window Button (Hidden by default, shown via JS on mobile) -->
+            <button id="btn-mobile-popup" class="w-full py-2 px-4 bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900 font-medium rounded-lg text-xs transition flex items-center justify-center gap-2 hidden">
+                <i data-lucide="external-link" class="w-3.5 h-3.5"></i> Buka Jendela Pop-up (PIP Mode)
             </button>
-
-            <!-- Status Logs -->
-            <div id="status-log" class="absolute bottom-3 left-3 md:bottom-4 md:left-4 bg-zinc-100/90 dark:bg-zinc-800/90 border border-zinc-200 dark:border-zinc-700 text-[9px] md:text-[10px] font-mono px-2 py-0.5 md:py-1 rounded text-zinc-500 max-w-[80%] truncate">
-                System: Ready
-            </div>
         </div>
 
         <!-- Control Center Panel -->
@@ -90,7 +97,6 @@
                     <span class="text-xs text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5 min-w-0 truncate">
                         <i data-lucide="volume-2" class="w-3.5 h-3.5 shrink-0"></i> Suara Share Screen
                     </span>
-                    <!-- Dipasang default Off pada UI di awal untuk memaksa interaksi fisik klik oleh user/penonton -->
                     <button id="btn-toggle-audio" class="py-1.5 px-3 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs font-medium hover:bg-zinc-50 dark:hover:bg-zinc-800 transition flex items-center gap-1.5 text-zinc-500 dark:text-zinc-400 shrink-0">
                         <i id="icon-audio" class="w-3.5 h-3.5" data-lucide="volume-x"></i> <span id="txt-audio">Off</span>
                     </button>
@@ -159,7 +165,7 @@
         const peer = new Peer(fullCustomId, peerConfig);
 
         let screenStream = null;
-        let isAudioEnabled = false; // Set awal false agar sinkron dengan UI awal penonton
+        let isAudioEnabled = false;
 
         const elPeerId = document.getElementById('peer-id-display');
         const elMainVideo = document.getElementById('main-video');
@@ -171,8 +177,15 @@
         const btnStopShare = document.getElementById('btn-stop-share');
         const btnToggleAudio = document.getElementById('btn-toggle-audio');
         const btnFullscreen = document.getElementById('btn-fullscreen');
+        const btnMobilePopup = document.getElementById('btn-mobile-popup');
         const btnConnect = document.getElementById('btn-connect');
         const inputTargetId = document.getElementById('input-target-id');
+
+        // Deteksi Device Mobile
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        if (isMobile) {
+            btnMobilePopup.classList.remove('hidden'); // Tampilkan tombol pop-up window khusus mobile
+        }
 
         function logStatus(msg) {
             elLog.innerText = `System: ${msg}`;
@@ -196,15 +209,11 @@
         peer.on('connection', (conn) => {
             conn.on('data', (data) => {
                 if (data.type === 'REQUEST_STREAM') {
-                    logStatus(`Penonton terhubung, menyalurkan video & audio...`);
-                    
+                    logStatus(`Penonton terhubung, menyalurkan media...`);
                     if (screenStream) {
                         let outboundStream = new MediaStream();
                         screenStream.getVideoTracks().forEach(t => outboundStream.addTrack(t));
-                        
-                        // Kirim semua trek audio sistem yang tersedia ke penonton
                         screenStream.getAudioTracks().forEach(t => outboundStream.addTrack(t));
-                        
                         peer.call(data.viewerId, outboundStream);
                     } else {
                         logStatus("Gagal kirim: Anda belum menekan tombol Bagikan Layar.");
@@ -219,12 +228,8 @@
             call.answer(); 
             
             call.on('stream', (remoteStream) => {
+                window.remoteStreamData = remoteStream; // Simpan global agar bisa diakses pop-up window jika dibuka
                 elMainVideo.srcObject = remoteStream;
-                
-                // Cek apakah ada trek audio yang dikirim oleh Host
-                if(remoteStream.getAudioTracks().length > 0) {
-                    logStatus("Media terdeteksi mengandung audio sistem!");
-                }
                 
                 elMainVideo.classList.remove('hidden');
                 btnFullscreen.classList.remove('hidden');
@@ -246,7 +251,6 @@
         // --- HANDLER SHARE SCREEN ---
         btnStartShare.addEventListener('click', async () => {
             try {
-                // PENYEMPURNAAN KONTROL AUDIO UTAMA (Mematikan filter suara mic agar audio sistem jernih)
                 screenStream = await navigator.mediaDevices.getDisplayMedia({
                     video: true,
                     audio: {
@@ -256,7 +260,6 @@
                     }
                 });
 
-                // Set trek audio keluar sesuai status kontrol internal
                 screenStream.getAudioTracks().forEach(t => t.enabled = isAudioEnabled);
 
                 elMainVideo.srcObject = screenStream;
@@ -266,12 +269,7 @@
                 btnStartShare.classList.add('hidden');
                 btnStopShare.classList.remove('hidden');
                 
-                if (screenStream.getAudioTracks().length === 0) {
-                    logStatus("Aktif tanpa audio. (Ingat pilih opsi TAB jika ingin suara ikut)");
-                } else {
-                    logStatus("Berbagi layar aktif. Menunggu penonton.");
-                }
-
+                logStatus("Berbagi layar aktif. Menunggu penonton.");
                 screenStream.getVideoTracks()[0].onended = () => stopScreenShare();
             } catch (err) {
                 logStatus("Izin akses berbagi layar ditolak.");
@@ -292,14 +290,11 @@
         }
         btnStopShare.addEventListener('click', stopScreenShare);
 
-        // --- TOGGLE AUDIO (UNMUTE SECARA NYATA PADA DOM) ---
+        // --- TOGGLE AUDIO ---
         btnToggleAudio.addEventListener('click', () => {
             isAudioEnabled = !isAudioEnabled;
-            
-            // Sisi Penonton: Membuka sumbatan elemen video agar suara terdengar nyata
             elMainVideo.muted = !isAudioEnabled;
             
-            // Sisi Host: Mengirim/menonaktifkan trek audio ke jaringan
             if (screenStream) {
                 screenStream.getAudioTracks().forEach(t => t.enabled = isAudioEnabled);
             }
@@ -316,18 +311,78 @@
             lucide.createIcons();
         });
 
-        // --- FULLSCREEN ---
+        // --- FIX FULLSCREEN MOBILE SYSTEM ---
         btnFullscreen.addEventListener('click', () => {
-            if (!document.fullscreenElement) {
-                elWrapper.requestFullscreen().catch(() => elMainVideo.requestFullscreen());
+            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                // Skenario 1: Coba mode standar Wrapper DOM
+                if (elWrapper.requestFullscreen) {
+                    elWrapper.requestFullscreen().catch(() => launchDirectVideoFullscreen());
+                } else if (elWrapper.webkitRequestFullscreen) {
+                    elWrapper.webkitRequestFullscreen();
+                } else {
+                    launchDirectVideoFullscreen();
+                }
             } else {
-                document.exitFullscreen();
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                }
             }
         });
 
-        document.addEventListener('fullscreenchange', () => {
-            btnFullscreen.innerHTML = document.fullscreenElement ? `<i data-lucide="minimize" class="w-4 h-4"></i>` : `<i data-lucide="expand" class="w-4 h-4"></i>`;
-            lucide.createIcons();
+        // Fallback Khusus Mobile: Menembak langsung ke Core Video Tag (Sangat ampuh di iOS/Safari Mobile)
+        function launchDirectVideoFullscreen() {
+            if (elMainVideo.requestFullscreen) {
+                elMainVideo.requestFullscreen();
+            } else if (elMainVideo.webkitEnterFullscreen) {
+                elMainVideo.webkitEnterFullscreen(); // Perintah native iOS media player fullscreen
+            } else if (elMainVideo.webkitRequestFullscreen) {
+                elMainVideo.webkitRequestFullscreen();
+            } else {
+                alert("Device ini tidak mendukung API Fullscreen. Silakan gunakan fitur Jendela Pop-up!");
+            }
+        }
+
+        // --- FUNGSI POP-UP WINDOW KHUSUS DEVICE MOBILE ---
+        btnMobilePopup.addEventListener('click', () => {
+            if (!elMainVideo.srcObject && !window.remoteStreamData) {
+                alert("Belum ada tayangan aktif untuk dijadikan pop-up!");
+                return;
+            }
+
+            // Membuka jendela baru berukuran kecil terisolasi di pojok bawah (Simulasi Picture-in-Picture murni)
+            const popup = window.open("", "LayarKRIS_Popup", "width=480,height=270,scrollbars=no,resizable=yes,status=no,location=no,toolbar=no,menubar=no");
+            
+            if (!popup) {
+                alert("Pop-up diblokir browser! Izinkan izin pop-up untuk aplikasi ini di pengaturan browser Anda.");
+                return;
+            }
+
+            // Menyuntikkan struktur HTML & CSS Tailwind ke dalam jendela pop-up baru
+            popup.document.write(`
+                <html>
+                <head>
+                    <title>Layar KRIS - Pop-up Viewer</title>
+                    <script src="https://cdn.tailwindcss.com"><\/script>
+                    <style>body { margin: 0; background: #09090b; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }</style>
+                </head>
+                <body class="bg-zinc-950">
+                    <video id="popup-video" autoplay playsinline class="w-full h-full object-contain"></video>
+                </body>
+                </html>
+            `);
+            popup.document.close();
+
+            // Memindahkan stream berjalan dari jendela utama menuju jendela pop-up secara langsung tanpa memutus WebRTC
+            popup.onload = function() {
+                const popupVideo = popup.document.getElementById('popup-video');
+                popupVideo.srcObject = elMainVideo.srcObject || window.remoteStreamData;
+                popupVideo.muted = elMainVideo.muted;
+                popupVideo.play().catch(() => {
+                    popup.document.body.addEventListener('click', () => { popupVideo.play(); });
+                });
+            };
         });
 
         // --- ACTION CONNECT ---
